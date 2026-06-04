@@ -4,55 +4,54 @@ import google.generativeai as genai
 # Page Configuration
 st.set_page_config(page_title="AI Career Counselor", page_icon="🎯")
 
-# Sidebar for Gemini API Key
 with st.sidebar:
     st.title("Settings")
     api_key = st.text_input("Enter Gemini API Key", type="password")
-    st.info("Get your key at [Google AI Studio](https://aistudio.google.com/)")
+    st.info("Ensure your key is from [Google AI Studio](https://aistudio.google.com/)")
 
 st.title("🎓 AI Career Counselor")
-st.write("Get a professional roadmap to your dream career.")
 
-# User Inputs
-col1, col2 = st.columns(2)
-with col1:
-    current_status = st.text_input("Current Role/Background", placeholder="e.g. Student")
-    target_role = st.text_input("Target Career Goal", placeholder="e.g. Data Scientist")
-
-with col2:
-    experience = st.selectbox("Experience Level", ["Entry-Level", "Mid-Level", "Senior"])
-    skills = st.text_area("Your Skills", placeholder="e.g. Python, Excel")
+# Inputs
+current_status = st.text_input("Current Background")
+target_role = st.text_input("Target Career")
 
 if st.button("Generate Roadmap"):
     if not api_key:
-        st.error("Please enter your API Key in the sidebar.")
+        st.error("Please enter your API Key.")
     else:
         try:
-            # Setup the SDK
             genai.configure(api_key=api_key)
             
-            # Using the stable model name
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            # --- MODEL DISCOVERY LOGIC ---
+            # This part finds which model YOUR key is allowed to use
+            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             
-            with st.spinner("Generating your plan..."):
-                prompt = f"""
-                Act as a Career Counselor. Provide a detailed career roadmap for:
-                Current Role: {current_status}
-                Target Role: {target_role}
-                Level: {experience}
-                Skills: {skills}
-                
-                Include: 
-                1. Skill gaps
-                2. Learning path
-                3. A 3-month action plan.
-                """
-                
-                response = model.generate_content(prompt)
-                
-                st.markdown("---")
-                st.markdown(response.text)
+            # Pick the best one available
+            if '/models/gemini-1.5-flash-latest' in available_models:
+                model_to_use = 'gemini-1.5-flash-latest'
+            elif '/models/gemini-1.5-flash' in available_models:
+                model_to_use = 'gemini-1.5-flash'
+            elif '/models/gemini-pro' in available_models:
+                model_to_use = 'gemini-pro'
+            else:
+                # If nothing else, pick the first one in the list
+                model_to_use = available_models[0].split('/')[-1]
+            
+            st.info(f"Using model: {model_to_use}")
+            
+            # --- GENERATION ---
+            model = genai.GenerativeModel(model_to_use)
+            prompt = f"Act as a career counselor. Give a roadmap for {current_status} to become {target_role}."
+            
+            response = model.generate_content(prompt)
+            st.markdown(response.text)
                 
         except Exception as e:
-            # This will help us see the exact error if it fails again
-            st.error(f"An error occurred: {e}")
+            st.error(f"Error: {e}")
+            st.write("Current available models for your key:")
+            # List all models so you can see what is available
+            try:
+                models = [m.name for m in genai.list_models()]
+                st.write(models)
+            except:
+                st.write("Could not list models. Is your API Key correct?")

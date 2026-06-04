@@ -1,82 +1,58 @@
 import streamlit as st
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 # Page Configuration
-st.set_page_config(page_title="AI Career Counselor", page_icon="🎯", layout="centered")
+st.set_page_config(page_title="AI Career Counselor", page_icon="🎯")
 
 # Sidebar for Gemini API Key
 with st.sidebar:
     st.title("Settings")
     api_key = st.text_input("Enter Gemini API Key", type="password")
-    st.info("Get your API key at [Google AI Studio](https://aistudio.google.com/)")
-    st.markdown("---")
-    st.markdown("### How it works")
-    st.caption("1. Enter your API Key")
-    st.caption("2. Fill in your profile")
-    st.caption("3. Get a data-driven career path")
+    st.info("Get your key at [Google AI Studio](https://aistudio.google.com/)")
 
 st.title("🎓 AI Career Counselor")
-st.write("Unlock your potential with personalized, AI-driven career guidance.")
+st.write("Get a professional roadmap to your dream career.")
 
-# User Input Form
-with st.container():
-    col1, col2 = st.columns(2)
-    with col1:
-        current_status = st.text_input("Current Role / Background", placeholder="e.g. Mechanical Engineer")
-        target_role = st.text_input("Target Dream Career", placeholder="e.g. AI Product Manager")
-    
-    with col2:
-        experience = st.selectbox("Years of Experience", ["Student/Fresh Grad", "1-3 Years", "3-7 Years", "7+ Years"])
-        location = st.text_input("Preferred Location", placeholder="e.g. Remote / London")
+# User Inputs
+col1, col2 = st.columns(2)
+with col1:
+    current_status = st.text_input("Current Role/Background", placeholder="e.g. Student")
+    target_role = st.text_input("Target Career Goal", placeholder="e.g. Data Scientist")
 
-    skills = st.text_area("List your top skills (Comma separated)", placeholder="e.g. Python, Project Management, SQL")
+with col2:
+    experience = st.selectbox("Experience Level", ["Entry-Level", "Mid-Level", "Senior"])
+    skills = st.text_area("Your Skills", placeholder="e.g. Python, Excel")
 
-# Action Button
-if st.button("Generate My Career Roadmap", type="primary"):
+if st.button("Generate Roadmap"):
     if not api_key:
-        st.error("Please provide a Gemini API Key in the sidebar to proceed.")
-    elif not target_role:
-        st.warning("Please enter a Target Career Goal.")
+        st.error("Please enter your API Key in the sidebar.")
     else:
         try:
-            # Initialize Gemini Client
-            client = genai.Client(api_key=api_key)
+            # Setup the SDK
+            genai.configure(api_key=api_key)
             
-            with st.spinner("Analyzing market trends and crafting your path..."):
+            # Using the stable model name
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            with st.spinner("Generating your plan..."):
                 prompt = f"""
-                Act as an expert Career Counselor. Create a professional career roadmap for a user with the following profile:
-                - Current Role: {current_status}
-                - Target Career: {target_role}
-                - Experience: {experience}
-                - Current Skills: {skills}
-                - Location Preference: {location}
-
-                Provide the roadmap in these specific sections:
-                1. **Skills Gap Analysis**: Contrast what they have vs. what the target role requires.
-                2. **Learning Roadmap**: Suggest specific certifications, tools, or courses.
-                3. **Resume & LinkedIn Optimization**: Give 3 specific bullet points to add.
-                4. **Interview Prep**: Top 3 technical or behavioral questions for this specific transition.
-                5. **3-Phase Action Plan**: Steps for the next 30, 60, and 90 days.
+                Act as a Career Counselor. Provide a detailed career roadmap for:
+                Current Role: {current_status}
+                Target Role: {target_role}
+                Level: {experience}
+                Skills: {skills}
+                
+                Include: 
+                1. Skill gaps
+                2. Learning path
+                3. A 3-month action plan.
                 """
-
-                # Call Gemini Model (using 1.5-flash for speed and cost-efficiency)
-                response = client.models.generate_content(
-                    model="gemini-1.5-flash",
-                    contents=prompt
-                )
-
-                # Display Result
+                
+                response = model.generate_content(prompt)
+                
                 st.markdown("---")
-                st.success(f"### 🚀 Roadmap to {target_role}")
                 st.markdown(response.text)
                 
-                # Option to download
-                st.download_button("Download Roadmap as Text", response.text, file_name="career_roadmap.txt")
-
         except Exception as e:
-            st.error(f"An error occurred: {str(e)}")
-
-# Footer
-st.markdown("---")
-st.caption("Privacy Note: Your data is processed via the API and not stored on this server.")
+            # This will help us see the exact error if it fails again
+            st.error(f"An error occurred: {e}")
